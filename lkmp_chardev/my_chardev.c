@@ -33,19 +33,19 @@ static struct file_operations fops = {
 static int __init my_chardev_init(void)
 {
 	Major = register_chrdev(0, DEVICE_NAME, &fops);
-	
+
 	if (Major < 0){
 		printk(KERN_ALERT "registering char device failed:%d\n",
 		       Major);
 		return Major;
 	}
-	
+
 	printk(KERN_INFO "Assigned major number:%d\n", Major);
 	printk(KERN_INFO "the driver create a dev file\n");
 	printk(KERN_INFO "'mknod /dev/%s c %d 0'.\n", DEVICE_NAME, Major);
 	printk(KERN_INFO "Try various minor numbers. Cat and echo it\n");
 	printk(KERN_INFO "Remove the device file and module when done\n");
-	
+
 	return SUCCESS;
 }
 
@@ -62,10 +62,10 @@ static void __exit my_chardev_exit(void)
 static int my_chardev_open(struct inode *inode, struct file *file)
 {
 	static int counter = 0;
-	
+
 	if (Device_Opened)
 		return -EBUSY;
-	
+
 	Device_Opened++;
 	sprintf(msg, "I already told you %d times Hello world!\n", counter++);
 	msg_ptr = msg;
@@ -88,10 +88,10 @@ static ssize_t my_chardev_read(struct file *file, char *buf,
 			       size_t len, loff_t *off)
 {
 	int bytes_read = 0;
-	
+
 	if(*msg_ptr == 0)
 		return 0;
-	
+
 	while (len && *msg_ptr){
 		put_user(*(msg_ptr++), buf++);
 		len--;
@@ -106,7 +106,7 @@ static ssize_t my_chardev_write(struct file *file, const char *buf,
 				size_t len, loff_t *off)
 {
 	printk(KERN_INFO "Sorry, this operation isn't supported\n");
-	
+
 	return -EINVAL;
 }
 
