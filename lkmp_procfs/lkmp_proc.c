@@ -3,11 +3,17 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/proc_fs.h>
+#include <asm/uaccess.h>
 
 #define PROCFS_NAME "my_proc_hello"
+#define PROCFS_MAX_SIZE 1024
 
 static struct proc_dir_entry *my_proc_file;
 
+static char proc_buffer[PROCFS_MAX_SIZE];
+static unsigned long proc_buffer_size = 0;
+
+/* proc read function */
 static int my_proc_read(char *buf,
 			char **bufp,
 			off_t off,
@@ -16,15 +22,36 @@ static int my_proc_read(char *buf,
 			void *data)
 {
 	int ret = -1;
+
 	printk(KERN_INFO "my_proc_read(/proc/%s) called\n", PROCFS_NAME);
 
 	if(off > 0){
 		ret = 0;
 	}else{
-		ret = sprintf(buf, "hello world\n");
+		memcpy(buf, proc_buffer, proc_buffer_size);
+		ret = proc_buffer_size;
 	}
 	
 	return ret;
+}
+
+/* proc write function */
+static int my_proc_write(struct file *filp, 
+			 const char *buf,
+			 unsigned long count,
+			 void *data)
+{
+	proc_buffer_size = count;
+	if(proc_buffer_size > PROCFS_MAX_SIZE){
+		proc_buffer_size = PROCFS_MAX_SIZE;
+	}
+
+	printk(KERN_INFO "my_proc_write(/proc/%s) called\n", PROCFS_NAME);
+	if(copy_from_user(proc_buffer, buf, proc_buffer_size)){
+		return -EFAULT;
+	}
+
+	return proc_buffer_size;
 }
 
 static int __init my_proc_init(void)
@@ -40,6 +67,7 @@ static int __init my_proc_init(void)
 	}
 
 	my_proc_file->read_proc = my_proc_read;
+	my_proc_file->write_proc = my_proc_write;
 	/* my_proc_file->owner = THIS_MODULE; */
 	my_proc_file->mode = S_IFREG | S_IRUGO;
 	my_proc_file->uid = 0;
