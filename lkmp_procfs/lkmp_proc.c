@@ -31,12 +31,12 @@ static int my_proc_read(char *buf,
 		memcpy(buf, proc_buffer, proc_buffer_size);
 		ret = proc_buffer_size;
 	}
-	
+
 	return ret;
 }
 
 /* proc write function */
-static int my_proc_write(struct file *filp, 
+static int my_proc_write(struct file *filp,
 			 const char *buf,
 			 unsigned long count,
 			 void *data)
