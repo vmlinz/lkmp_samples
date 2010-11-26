@@ -76,9 +76,8 @@ static int my_proc_inode_perm(struct inode *inode,
 			      int op)
 {
 	printk(KERN_INFO "inode op mode = %x\n", op);
-	if((op & 0x4 || op & 0x40 || op & 0x400)
-	   || ((op & 0x2 || op & 0x20 || op & 0x200)
-	       && current->cred->euid == 0))
+	if(op & S_IRUGO
+	   || ((op & S_IWUGO) && current->cred->euid == 0))
 		return 0;
 
 	return -EACCES;
