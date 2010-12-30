@@ -14,7 +14,6 @@
  *
  */
 
-#include <linux/config.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -88,7 +87,7 @@ int scull_trim(struct scull_dev *dev)
  */
 
 int scull_read_procmem(char *buf, char **start, off_t offset,
-                   int count, int *eof, void *data)
+		   int count, int *eof, void *data)
 {
 	int i, j, len = 0;
 	int limit = count - 80; /* Don't print more than this */
@@ -170,7 +169,7 @@ static int scull_seq_show(struct seq_file *s, void *v)
 	up(&dev->sem);
 	return 0;
 }
-	
+
 /*
  * Tie the sequence operators up.
  */
@@ -200,7 +199,7 @@ static struct file_operations scull_proc_ops = {
 	.llseek  = seq_lseek,
 	.release = seq_release
 };
-	
+
 
 /*
  * Actually create (and remove) the /proc file(s).
@@ -263,7 +262,7 @@ struct scull_qset *scull_follow(struct scull_dev *dev, int n)
 {
 	struct scull_qset *qs = dev->data;
 
-        /* Allocate first qset explicitly if need be */
+	/* Allocate first qset explicitly if need be */
 	if (! qs) {
 		qs = dev->data = kmalloc(sizeof(struct scull_qset), GFP_KERNEL);
 		if (qs == NULL)
@@ -290,9 +289,9 @@ struct scull_qset *scull_follow(struct scull_dev *dev, int n)
  */
 
 ssize_t scull_read(struct file *filp, char __user *buf, size_t count,
-                loff_t *f_pos)
+		loff_t *f_pos)
 {
-	struct scull_dev *dev = filp->private_data; 
+	struct scull_dev *dev = filp->private_data;
 	struct scull_qset *dptr;	/* the first listitem */
 	int quantum = dev->quantum, qset = dev->qset;
 	int itemsize = quantum * qset; /* how many bytes in the listitem */
@@ -334,7 +333,7 @@ ssize_t scull_read(struct file *filp, char __user *buf, size_t count,
 }
 
 ssize_t scull_write(struct file *filp, const char __user *buf, size_t count,
-                loff_t *f_pos)
+		loff_t *f_pos)
 {
 	struct scull_dev *dev = filp->private_data;
 	struct scull_qset *dptr;
@@ -377,7 +376,7 @@ ssize_t scull_write(struct file *filp, const char __user *buf, size_t count,
 	*f_pos += count;
 	retval = count;
 
-        /* update the size */
+	/* update the size */
 	if (dev->size < *f_pos)
 		dev->size = *f_pos;
 
@@ -391,12 +390,12 @@ ssize_t scull_write(struct file *filp, const char __user *buf, size_t count,
  */
 
 int scull_ioctl(struct inode *inode, struct file *filp,
-                 unsigned int cmd, unsigned long arg)
+		 unsigned int cmd, unsigned long arg)
 {
 
 	int err = 0, tmp;
 	int retval = 0;
-    
+
 	/*
 	 * extract the type and number bitfields, and don't decode
 	 * wrong cmds: return ENOTTY (inappropriate ioctl) before access_ok()
@@ -422,7 +421,7 @@ int scull_ioctl(struct inode *inode, struct file *filp,
 		scull_quantum = SCULL_QUANTUM;
 		scull_qset = SCULL_QSET;
 		break;
-        
+
 	  case SCULL_IOCSQUANTUM: /* Set: arg points to the value */
 		if (! capable (CAP_SYS_ADMIN))
 			return -EPERM;
@@ -457,7 +456,7 @@ int scull_ioctl(struct inode *inode, struct file *filp,
 		tmp = scull_quantum;
 		scull_quantum = arg;
 		return tmp;
-        
+
 	  case SCULL_IOCSQSET:
 		if (! capable (CAP_SYS_ADMIN))
 			return -EPERM;
@@ -493,11 +492,11 @@ int scull_ioctl(struct inode *inode, struct file *filp,
 		scull_qset = arg;
 		return tmp;
 
-        /*
-         * The following two change the buffer size for scullpipe.
-         * The scullpipe device uses this same ioctl method, just to
-         * write less code. Actually, it's the same driver, isn't it?
-         */
+	/*
+	 * The following two change the buffer size for scullpipe.
+	 * The scullpipe device uses this same ioctl method, just to
+	 * write less code. Actually, it's the same driver, isn't it?
+	 */
 
 	  case SCULL_P_IOCTSIZE:
 		scull_p_buffer = arg;
@@ -601,7 +600,7 @@ void scull_cleanup_module(void)
 static void scull_setup_cdev(struct scull_dev *dev, int index)
 {
 	int err, devno = MKDEV(scull_major, scull_minor + index);
-    
+
 	cdev_init(&dev->cdev, &scull_fops);
 	dev->cdev.owner = THIS_MODULE;
 	dev->cdev.ops = &scull_fops;
@@ -634,7 +633,7 @@ int scull_init_module(void)
 		return result;
 	}
 
-        /* 
+	/*
 	 * allocate the devices -- we can't have them static, as the number
 	 * can be specified at load time
 	 */
@@ -645,7 +644,7 @@ int scull_init_module(void)
 	}
 	memset(scull_devices, 0, scull_nr_devs * sizeof(struct scull_dev));
 
-        /* Initialize each device. */
+	/* Initialize each device. */
 	for (i = 0; i < scull_nr_devs; i++) {
 		scull_devices[i].quantum = scull_quantum;
 		scull_devices[i].qset = scull_qset;
@@ -653,7 +652,7 @@ int scull_init_module(void)
 		scull_setup_cdev(&scull_devices[i], i);
 	}
 
-        /* At this point call the init function for any friend device */
+	/* At this point call the init function for any friend device */
 	dev = MKDEV(scull_major, scull_minor + scull_nr_devs);
 	dev += scull_p_init(dev);
 	dev += scull_access_init(dev);

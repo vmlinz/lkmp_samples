@@ -13,7 +13,7 @@
  * we cannot take responsibility for errors or fitness for use.
  *
  */
- 
+
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 
@@ -26,19 +26,20 @@
 #include <linux/fcntl.h>
 #include <linux/poll.h>
 #include <linux/cdev.h>
+#include <linux/sched.h>
 #include <asm/uaccess.h>
 
 #include "scull.h"		/* local definitions */
 
 struct scull_pipe {
-        wait_queue_head_t inq, outq;       /* read and write queues */
-        char *buffer, *end;                /* begin of buf, end of buf */
-        int buffersize;                    /* used in pointer arithmetic */
-        char *rp, *wp;                     /* where to read, where to write */
-        int nreaders, nwriters;            /* number of openings for r/w */
-        struct fasync_struct *async_queue; /* asynchronous readers */
-        struct semaphore sem;              /* mutual exclusion semaphore */
-        struct cdev cdev;                  /* Char device structure */
+	wait_queue_head_t inq, outq;       /* read and write queues */
+	char *buffer, *end;                /* begin of buf, end of buf */
+	int buffersize;                    /* used in pointer arithmetic */
+	char *rp, *wp;                     /* where to read, where to write */
+	int nreaders, nwriters;            /* number of openings for r/w */
+	struct fasync_struct *async_queue; /* asynchronous readers */
+	struct semaphore sem;              /* mutual exclusion semaphore */
+	struct cdev cdev;                  /* Char device structure */
 };
 
 /* parameters */
@@ -116,7 +117,7 @@ static int scull_p_release(struct inode *inode, struct file *filp)
  */
 
 static ssize_t scull_p_read (struct file *filp, char __user *buf, size_t count,
-                loff_t *f_pos)
+		loff_t *f_pos)
 {
 	struct scull_pipe *dev = filp->private_data;
 
@@ -160,7 +161,7 @@ static int scull_getwritespace(struct scull_pipe *dev, struct file *filp)
 {
 	while (spacefree(dev) == 0) { /* full */
 		DEFINE_WAIT(wait);
-		
+
 		up(&dev->sem);
 		if (filp->f_flags & O_NONBLOCK)
 			return -EAGAIN;
@@ -175,7 +176,7 @@ static int scull_getwritespace(struct scull_pipe *dev, struct file *filp)
 			return -ERESTARTSYS;
 	}
 	return 0;
-}	
+}
 
 /* How much space is free? */
 static int spacefree(struct scull_pipe *dev)
@@ -186,7 +187,7 @@ static int spacefree(struct scull_pipe *dev)
 }
 
 static ssize_t scull_p_write(struct file *filp, const char __user *buf, size_t count,
-                loff_t *f_pos)
+		loff_t *f_pos)
 {
 	struct scull_pipe *dev = filp->private_data;
 	int result;
@@ -329,7 +330,7 @@ struct file_operations scull_pipe_fops = {
 static void scull_p_setup_cdev(struct scull_pipe *dev, int index)
 {
 	int err, devno = scull_p_devno + index;
-    
+
 	cdev_init(&dev->cdev, &scull_pipe_fops);
 	dev->cdev.owner = THIS_MODULE;
 	err = cdev_add (&dev->cdev, devno, 1);
@@ -338,7 +339,7 @@ static void scull_p_setup_cdev(struct scull_pipe *dev, int index)
 		printk(KERN_NOTICE "Error %d adding scullpipe%d", err, index);
 }
 
- 
+
 
 /*
  * Initialize the pipe devs; return how many we did.
