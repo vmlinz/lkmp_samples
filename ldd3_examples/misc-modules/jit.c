@@ -15,7 +15,7 @@
  * $Id: jit.c,v 1.16 2004/09/26 07:02:43 gregkh Exp $
  */
 
-#include <linux/config.h>
+/* #include <linux/config.h> */
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -27,6 +27,8 @@
 #include <linux/types.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
+#include <linux/sched.h>
+#include <linux/wait.h>
 
 #include <asm/hardirq.h>
 /*
@@ -92,7 +94,7 @@ int jit_fn(char *buf, char **start, off_t offset,
  * This file, on the other hand, returns the current time forever
  */
 int jit_currentime(char *buf, char **start, off_t offset,
-                   int len, int *eof, void *data)
+		   int len, int *eof, void *data)
 {
 	struct timeval tv1;
 	struct timespec tv2;
@@ -177,7 +179,7 @@ int jit_timer(char *buf, char **start, off_t offset,
 	data->prevjiffies = j;
 	data->buf = buf2;
 	data->loops = JIT_ASYNC_LOOPS;
-	
+
 	/* register the timer */
 	data->timer.data = (unsigned long)data;
 	data->timer.function = jit_timer_fn;
@@ -238,7 +240,7 @@ int jit_tasklet(char *buf, char **start, off_t offset,
 	data->prevjiffies = j;
 	data->buf = buf2;
 	data->loops = JIT_ASYNC_LOOPS;
-	
+
 	/* register the tasklet */
 	tasklet_init(&data->tlet, jit_tasklet_fn, (unsigned long)data);
 	data->hi = hi;

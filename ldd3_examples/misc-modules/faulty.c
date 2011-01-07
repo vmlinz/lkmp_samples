@@ -16,7 +16,7 @@
  */
 
 
-#include <linux/config.h>
+/* #include <linux/config.h> */
 #include <linux/module.h>
 #include <linux/init.h>
 
@@ -86,4 +86,3 @@ void faulty_cleanup(void)
 
 module_init(faulty_init);
 module_exit(faulty_cleanup);
-

@@ -14,8 +14,8 @@
  *
  * $Id: jiq.c,v 1.7 2004/09/26 07:02:43 gregkh Exp $
  */
- 
-#include <linux/config.h>
+
+/* #include <linux/config.h> */
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -85,7 +85,7 @@ static int jiq_print(void *ptr)
 	char *buf = data->buf;
 	unsigned long j = jiffies;
 
-	if (len > LIMIT) { 
+	if (len > LIMIT) {
 		wake_up_interruptible(&jiq_wait);
 		return 0;
 	}
@@ -114,10 +114,10 @@ static int jiq_print(void *ptr)
 static void jiq_print_wq(void *ptr)
 {
 	struct clientdata *data = (struct clientdata *) ptr;
-    
+
 	if (! jiq_print (ptr))
 		return;
-    
+
 	if (data->delay)
 		schedule_delayed_work(&jiq_work, data->delay);
 	else
@@ -127,15 +127,15 @@ static void jiq_print_wq(void *ptr)
 
 
 static int jiq_read_wq(char *buf, char **start, off_t offset,
-                   int len, int *eof, void *data)
+		   int len, int *eof, void *data)
 {
 	DEFINE_WAIT(wait);
-	
+
 	jiq_data.len = 0;                /* nothing printed, yet */
 	jiq_data.buf = buf;              /* print in this place */
 	jiq_data.jiffies = jiffies;      /* initial time */
 	jiq_data.delay = 0;
-    
+
 	prepare_to_wait(&jiq_wait, &wait, TASK_INTERRUPTIBLE);
 	schedule_work(&jiq_work);
 	schedule();
@@ -147,15 +147,15 @@ static int jiq_read_wq(char *buf, char **start, off_t offset,
 
 
 static int jiq_read_wq_delayed(char *buf, char **start, off_t offset,
-                   int len, int *eof, void *data)
+		   int len, int *eof, void *data)
 {
 	DEFINE_WAIT(wait);
-	
+
 	jiq_data.len = 0;                /* nothing printed, yet */
 	jiq_data.buf = buf;              /* print in this place */
 	jiq_data.jiffies = jiffies;      /* initial time */
 	jiq_data.delay = delay;
-    
+
 	prepare_to_wait(&jiq_wait, &wait, TASK_INTERRUPTIBLE);
 	schedule_delayed_work(&jiq_work, delay);
 	schedule();
@@ -180,7 +180,7 @@ static void jiq_print_tasklet(unsigned long ptr)
 
 
 static int jiq_read_tasklet(char *buf, char **start, off_t offset, int len,
-                int *eof, void *data)
+		int *eof, void *data)
 {
 	jiq_data.len = 0;                /* nothing printed, yet */
 	jiq_data.buf = buf;              /* print in this place */
@@ -210,7 +210,7 @@ static void jiq_timedout(unsigned long ptr)
 
 
 static int jiq_read_run_timer(char *buf, char **start, off_t offset,
-                   int len, int *eof, void *data)
+		   int len, int *eof, void *data)
 {
 
 	jiq_data.len = 0;           /* prepare the argument for jiq_print() */
@@ -226,7 +226,7 @@ static int jiq_read_run_timer(char *buf, char **start, off_t offset,
 	add_timer(&jiq_timer);
 	interruptible_sleep_on(&jiq_wait);  /* RACE */
 	del_timer_sync(&jiq_timer);  /* in case a signal woke us up */
-    
+
 	*eof = 1;
 	return jiq_data.len;
 }
