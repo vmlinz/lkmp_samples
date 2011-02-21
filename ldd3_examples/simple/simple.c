@@ -101,13 +101,13 @@ int simple_vma_fault(struct vm_area_struct *vma,
 		struct vm_fault *vmf)
 {
 	struct page *pageptr;
-	unsigned long offset = vma->vm_pgoff << PAGE_SHIFT;
+	unsigned long offset = vmf->pgoff << PAGE_SHIFT;
 	unsigned long physaddr = (unsigned long)vmf->virtual_address - vma->vm_start + offset;
 	unsigned long pageframe = physaddr >> PAGE_SHIFT;
 
 // Eventually remove these printks
-	printk (KERN_NOTICE "---- Nopage, off %lx phys %lx\n",
-		vmf->pgoff, physaddr);
+	printk (KERN_NOTICE "---- VM Fault, off %lx addr %lx\n",
+		vmf->pgoff, (unsigned long)vmf->virtual_address);
 	printk (KERN_NOTICE "VA is %p\n", __va (physaddr));
 	printk (KERN_NOTICE "Page at %p\n", virt_to_page (__va (physaddr)));
 	if (!pfn_valid(pageframe))
