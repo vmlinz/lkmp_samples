@@ -17,18 +17,19 @@ static ssize_t my_chardev_read(struct file *, char *, size_t, loff_t *);
 static ssize_t my_chardev_write(struct file *, const char *, size_t, loff_t *);
 
 #define SUCCESS 0
-#define DEVICE_NAME "my_chardev"
 #define BUF_LEN 80
+#define DEVICE_NAME "my_chardev"
 
 static int my_major = 550;
 static int my_minor = 0;
 static dev_t my_devno = 0;
+
 static struct cdev my_cdev;
 
 /* driver class */
 static struct class *my_class;
 
-static int Device_Opened = 0;
+static int s_device_opened = 0;
 
 static char msg[BUF_LEN];
 static char *msg_ptr;
@@ -46,6 +47,7 @@ static int __init my_chardev_init(void)
 {
 	int result;
 
+	/* register char device number */
 	my_devno = MKDEV(my_major, my_minor);
 	result = register_chrdev_region(my_devno, 1, "my_dev");
 	if (result < 0){
@@ -54,8 +56,8 @@ static int __init my_chardev_init(void)
 		return result;
 	}
 
+	/* init cdev struct and add cdev to driver model */
 	cdev_init(&my_cdev, &my_fops);
-	my_cdev.owner = THIS_MODULE;
 	result = cdev_add(&my_cdev, my_devno, 1);
 	if (result){
 		printk(KERN_ALERT "failed to add cdev to system: %d",
@@ -72,9 +74,9 @@ static int __init my_chardev_init(void)
 
 	/* register device in sysfs, which will trigger udev to create
 	 * device node */
-	device_create(my_class, NULL, MKDEV(my_major, my_minor), NULL, "my_dev%d", 0);
+	device_create(my_class, NULL, MKDEV(my_major, my_minor), NULL, "%s%d", DEVICE_NAME, 0);
 
-	printk(KERN_INFO "My device registered in sysfs");
+	printk(KERN_INFO "%s: device registered in sysfs", DEVICE_NAME);
 
 	return SUCCESS;
 }
@@ -88,7 +90,7 @@ static void __exit my_chardev_exit(void)
 
 	unregister_chrdev_region(my_devno, 1);
 
-	printk(KERN_INFO "calling %s to unregister driver", __func__);
+	printk(KERN_INFO "%s: %s to unregister driver", DEVICE_NAME, __func__);
 }
 
 /* file operations */
@@ -98,10 +100,10 @@ static int my_chardev_open(struct inode *inode, struct file *file)
 {
 	static int counter = 0;
 
-	if (Device_Opened)
+	if (s_device_opened)
 		return -EBUSY;
 
-	Device_Opened++;
+	s_device_opened++;
 	sprintf(msg, "I already told you %d times Hello world!\n", counter++);
 	msg_ptr = msg;
 	try_module_get(THIS_MODULE);
@@ -112,7 +114,7 @@ static int my_chardev_open(struct inode *inode, struct file *file)
 /* release */
 static int my_chardev_release(struct inode *inode, struct file *file)
 {
-	Device_Opened--;
+	s_device_opened--;
 	module_put(THIS_MODULE);
 
 	return SUCCESS;
