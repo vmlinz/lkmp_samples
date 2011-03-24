@@ -53,7 +53,7 @@ module_param(delay, long, 0);
 static DECLARE_WAIT_QUEUE_HEAD (jiq_wait);
 
 
-static struct work_struct jiq_work;
+static struct delayed_work jiq_work;
 
 
 
@@ -85,6 +85,7 @@ static int jiq_print(void *ptr)
 	char *buf = data->buf;
 	unsigned long j = jiffies;
 
+	printk(KERN_INFO "jiq_print: wake_up_interruptible, %d-%lu", len, LIMIT);
 	if (len > LIMIT) {
 		wake_up_interruptible(&jiq_wait);
 		return 0;
@@ -104,6 +105,8 @@ static int jiq_print(void *ptr)
 	data->len += len;
 	data->buf += len;
 	data->jiffies = j;
+
+	printk(KERN_INFO "jiq_print: returns 1");
 	return 1;
 }
 
@@ -111,17 +114,19 @@ static int jiq_print(void *ptr)
 /*
  * Call jiq_print from a work queue
  */
-static void jiq_print_wq(void *ptr)
+static void jiq_print_wq(struct work_struct *work)
 {
-	struct clientdata *data = (struct clientdata *) ptr;
+	struct clientdata *data = &jiq_data;
 
-	if (! jiq_print (ptr))
+	printk(KERN_INFO "workqueue print data: %d, %lu\n", data->len, LIMIT);
+	if (! jiq_print ((void *)data))
 		return;
 
+	printk(KERN_INFO "workqueue reschedule\n");
 	if (data->delay)
 		schedule_delayed_work(&jiq_work, data->delay);
 	else
-		schedule_work(&jiq_work);
+		schedule_work(&(jiq_work.work));
 }
 
 
@@ -137,7 +142,7 @@ static int jiq_read_wq(char *buf, char **start, off_t offset,
 	jiq_data.delay = 0;
 
 	prepare_to_wait(&jiq_wait, &wait, TASK_INTERRUPTIBLE);
-	schedule_work(&jiq_work);
+	schedule_work(&(jiq_work.work));
 	schedule();
 	finish_wait(&jiq_wait, &wait);
 
@@ -241,7 +246,8 @@ static int jiq_init(void)
 {
 
 	/* this line is in jiq_init() */
-	INIT_WORK(&jiq_work, jiq_print_wq, &jiq_data);
+	/* using new workqueue api */
+	INIT_DELAYED_WORK(&jiq_work, jiq_print_wq);
 
 	create_proc_read_entry("jiqwq", 0, NULL, jiq_read_wq, NULL);
 	create_proc_read_entry("jiqwqdelay", 0, NULL, jiq_read_wq_delayed, NULL);

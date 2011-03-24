@@ -1,8 +1,12 @@
 /* create a read-only char device for test */
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/fs.h>
+#include <linux/cdev.h>
 #include <asm/uaccess.h>
+/* new api to create device node automaticly through udev  */
+#include <linux/device.h>
 
 /* function prototypes */
 static int __init my_chardev_init(void);
@@ -16,13 +20,21 @@ static ssize_t my_chardev_write(struct file *, const char *, size_t, loff_t *);
 #define DEVICE_NAME "my_chardev"
 #define BUF_LEN 80
 
-static int Major;
+static int my_major = 550;
+static int my_minor = 0;
+static dev_t my_devno = 0;
+static struct cdev my_cdev;
+
+/* driver class */
+static struct class *my_class;
+
 static int Device_Opened = 0;
 
 static char msg[BUF_LEN];
 static char *msg_ptr;
 
-static struct file_operations fops = {
+static struct file_operations my_fops = {
+	.owner = THIS_MODULE,
 	.read = my_chardev_read,
 	.write = my_chardev_write,
 	.open = my_chardev_open,
@@ -32,19 +44,37 @@ static struct file_operations fops = {
 /* the module init function */
 static int __init my_chardev_init(void)
 {
-	Major = register_chrdev(0, DEVICE_NAME, &fops);
+	int result;
 
-	if (Major < 0){
-		printk(KERN_ALERT "registering char device failed:%d\n",
-		       Major);
-		return Major;
+	my_devno = MKDEV(my_major, my_minor);
+	result = register_chrdev_region(my_devno, 1, "my_dev");
+	if (result < 0){
+		printk(KERN_ALERT "failed to register char device : %d\n",
+			my_major);
+		return result;
 	}
 
-	printk(KERN_INFO "Assigned major number:%d\n", Major);
-	printk(KERN_INFO "the driver create a dev file\n");
-	printk(KERN_INFO "'mknod /dev/%s c %d 0'.\n", DEVICE_NAME, Major);
-	printk(KERN_INFO "Try various minor numbers. Cat and echo it\n");
-	printk(KERN_INFO "Remove the device file and module when done\n");
+	cdev_init(&my_cdev, &my_fops);
+	my_cdev.owner = THIS_MODULE;
+	result = cdev_add(&my_cdev, my_devno, 1);
+	if (result){
+		printk(KERN_ALERT "failed to add cdev to system: %d",
+		       result);
+		return result;
+	}
+
+	/* create class under /sysfs */
+	my_class = class_create(THIS_MODULE, "my_class");
+	if(IS_ERR(my_class)){
+		printk(KERN_ALERT "Err: failed to create class for device");
+		return -1;
+	}
+
+	/* register device in sysfs, which will trigger udev to create
+	 * device node */
+	device_create(my_class, NULL, MKDEV(my_major, my_minor), NULL, "my_dev%d", 0);
+
+	printk(KERN_INFO "My device registered in sysfs");
 
 	return SUCCESS;
 }
@@ -52,8 +82,13 @@ static int __init my_chardev_init(void)
 /* cleanup function */
 static void __exit my_chardev_exit(void)
 {
-	unregister_chrdev(Major, DEVICE_NAME);
-	printk(KERN_INFO "unregister_chrdev");
+	cdev_del(&my_cdev);
+	device_destroy(my_class, my_devno);
+	class_destroy(my_class);
+
+	unregister_chrdev_region(my_devno, 1);
+
+	printk(KERN_INFO "calling %s to unregister driver", __func__);
 }
 
 /* file operations */
