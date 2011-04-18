@@ -20,8 +20,9 @@ static void *my_seq_start(struct seq_file *s, loff_t *pos)
 
 static void *my_seq_next(struct seq_file *s, void *v, loff_t *pos)
 {
-	printk(KERN_INFO "%s: called\n", __func__);
 	unsigned long *tmp_v = (unsigned long *)v;
+
+	printk(KERN_INFO "%s: called\n", __func__);
 	(*tmp_v)++;
 	(*pos)++;
 
