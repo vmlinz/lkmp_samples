@@ -16,6 +16,9 @@ static int my_chardev_release(struct inode *, struct file *);
 static ssize_t my_chardev_read(struct file *, char *, size_t, loff_t *);
 static ssize_t my_chardev_write(struct file *, const char *, size_t, loff_t *);
 
+static int my_class_suspend(struct device *dev, pm_message_t state);
+static int my_class_resume(struct device *dev);
+
 #define SUCCESS 0
 #define BUF_LEN 80
 #define DEVICE_NAME "my_chardev"
@@ -67,16 +70,20 @@ static int __init my_chardev_init(void)
 
 	/* create class under /sysfs */
 	my_class = class_create(THIS_MODULE, "my_class");
+
 	if(IS_ERR(my_class)){
 		printk(KERN_ALERT "Err: failed to create class for device");
 		return -1;
 	}
 
+	my_class->suspend = my_class_suspend;
+	my_class->resume = my_class_resume;
+
 	/* register device in sysfs, which will trigger udev to create
 	 * device node */
 	device_create(my_class, NULL, MKDEV(my_major, my_minor), NULL, "%s%d", DEVICE_NAME, 0);
 
-	printk(KERN_INFO "%s: device registered in sysfs", DEVICE_NAME);
+	printk(KERN_INFO "%s: device registered in system", DEVICE_NAME);
 
 	return SUCCESS;
 }
@@ -145,6 +152,21 @@ static ssize_t my_chardev_write(struct file *file, const char *buf,
 	printk(KERN_INFO "Sorry, this operation isn't supported\n");
 
 	return -EINVAL;
+}
+
+
+static int my_class_suspend(struct device *dev, pm_message_t state)
+{
+	printk(KERN_INFO "%s, suspending device: %s, state: %d",
+		dev->class->name, dev_name(dev), state.event);
+	return 0;
+}
+
+static int my_class_resume(struct device *dev)
+{
+	printk(KERN_INFO "%s, resuming device: %s",
+		dev->class->name, dev_name(dev));
+	return 0;
 }
 
 /* register module init and exit functions */
