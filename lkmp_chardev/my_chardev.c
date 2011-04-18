@@ -16,6 +16,7 @@ static int my_chardev_release(struct inode *, struct file *);
 static ssize_t my_chardev_read(struct file *, char *, size_t, loff_t *);
 static ssize_t my_chardev_write(struct file *, const char *, size_t, loff_t *);
 
+/* power management functions */
 static int my_class_suspend(struct device *dev, pm_message_t state);
 static int my_class_resume(struct device *dev);
 
