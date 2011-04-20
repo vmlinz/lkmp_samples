@@ -5,12 +5,31 @@
 #include <linux/cdev.h>
 
 #define MYDEVNAME "my_hello"
-#define DEFAULT_MSG "Hello World"
+#define DEFAULT_MSG "Hello World\n"
 
 static dev_t dev;
 static struct class *hello_class;
+static struct device *hello_device;
 static struct cdev *hello_cdev;
 static char hello_buf[80];
+
+static ssize_t hello_show(struct device *dev,
+			  struct device_attribute *attr,
+			  char *buf)
+{
+	return snprintf(buf, sizeof(hello_buf), "%s", hello_buf);
+}
+
+static ssize_t hello_store(struct device *dev,
+			   struct device_attribute *attr,
+			   const char *buf, size_t count)
+{
+	memset(hello_buf, 0, sizeof(hello_buf));
+	return snprintf(hello_buf, sizeof(hello_buf), "%s", buf);
+}
+
+/* define dev_attr_hello */
+static DEVICE_ATTR(hello, 0666, hello_show, hello_store);
 
 static int __init hello_init(void)
 {
@@ -44,10 +63,12 @@ static int __init hello_init(void)
 		error = PTR_ERR(hello_class);
 		goto out_chrdev;
 	}
-	device_create(hello_class, NULL, dev, NULL, MYDEVNAME);
+
+	hello_device = device_create(hello_class, NULL, dev, NULL, MYDEVNAME);
+	device_create_file(hello_device, &dev_attr_hello);
 
 	memset(hello_buf, 0, sizeof(hello_buf));
-	memcpy(hello_buf, DEFAULT_MSG, sizeof(DEFAULT_MSG));
+	memcpy(hello_buf, DEFAULT_MSG, strlen(DEFAULT_MSG));
 	printk(KERN_INFO "my_hello: Hello World!\n");
 
 	return 0;
@@ -62,6 +83,7 @@ out:
 
 static void __exit hello_exit(void)
 {
+	device_remove_file(hello_device, &dev_attr_hello);
 	device_destroy(hello_class, dev);
 	class_destroy(hello_class);
 
