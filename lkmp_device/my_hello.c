@@ -65,7 +65,11 @@ static int __init hello_init(void)
 	}
 
 	hello_device = device_create(hello_class, NULL, dev, NULL, MYDEVNAME);
-	device_create_file(hello_device, &dev_attr_hello);
+	error = device_create_file(hello_device, &dev_attr_hello);
+
+	if(error){
+		printk(KERN_INFO "my_hello: failed to create sysfs node!\n");
+	}
 
 	memset(hello_buf, 0, sizeof(hello_buf));
 	memcpy(hello_buf, DEFAULT_MSG, strlen(DEFAULT_MSG));

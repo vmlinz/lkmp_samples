@@ -1,6 +1,20 @@
-obj-m += my_hello.o
+# export arm toochain to path first
+MAKE:=make
 
+ifeq ($(ARCH),arm)
+
+MY_KDIR:=/home/vmlinz/Projects/android/aosp/kernel/common
+MY_CROSS:=arm-eabi-
+
+else
+
+MY_KDIR:=/lib/modules/$(shell uname -r)/build
+MY_CROSS:=
+
+endif
+
+obj-m   := my_hello.o
 all:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+	CROSS_COMPILE=$(MY_CROSS) $(MAKE) -C $(MY_KDIR) M=$(PWD) modules
 clean:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+	CROSS_COMPILE=$(MY_CROSS) $(MAKE) -C $(MY_KDIR) M=$(PWD) clean
