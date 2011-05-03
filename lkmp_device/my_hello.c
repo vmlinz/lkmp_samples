@@ -17,6 +17,8 @@ static ssize_t hello_show(struct device *dev,
 			  struct device_attribute *attr,
 			  char *buf)
 {
+	printk(KERN_INFO "%s:%s", __func__, buf);
+
 	return snprintf(buf, sizeof(hello_buf), "%s", hello_buf);
 }
 
@@ -24,6 +26,8 @@ static ssize_t hello_store(struct device *dev,
 			   struct device_attribute *attr,
 			   const char *buf, size_t count)
 {
+	printk(KERN_INFO "%s:%s", __func__, buf);
+
 	memset(hello_buf, 0, sizeof(hello_buf));
 	return snprintf(hello_buf, sizeof(hello_buf), "%s", buf);
 }
