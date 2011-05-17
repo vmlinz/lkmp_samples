@@ -1,11 +1,15 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/moduleparam.h>
+
+static int version = 0;
+module_param(version, int, 0644);
 
 /* init function */
 static int __init hello_init (void)
 {
-	printk (KERN_INFO "hello_init\n");
+	printk (KERN_INFO "hello_init: %d\n", version);
 	return 0;
 }
 
