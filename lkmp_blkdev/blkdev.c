@@ -6,6 +6,9 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 
+#include <linux/fs.h>
+#include <linux/blkdev.h>
+
 #define SBD_BYTES (16 * 1024 * 1024)
 
 static struct gendisk *sbd = NULL;
@@ -21,33 +24,24 @@ static struct block_device_operations sbd_ops =
 static void sbd_request_func(struct request_queue *q)
 {
 	struct request *req;
-	unsigned char *sbd_data_p;
-
-	sbd_data_wp = sbd_data_rp = sbd_data;
 
 	while((req = blk_fetch_request(q)) != NULL)
 	{
-		if(((blk_rq_pos(req) + blk_rq_cur_sectors(req)) << 9)
-			> SBD_BYTES)
-		{
-			printk(KERN_INFO "request out of bound\n");
+		if (req->cmd_type != REQ_TYPE_FS) {
+			printk (KERN_NOTICE "Skip non-fs request\n");
 
-			blk_end_request_cur(req, -1);
+			__blk_end_request_cur(req, -EIO);
 			continue;
 		}
 
-		if(rq_data_dir(req) == write)
-		{
-			memcpy(sbd_data_w, req->buffer, blk_rq_bytes(req));
-			sbd_data_wp += blk_rq_bytes(req);
-			blk_end_request_cur(req, 0);
-		}
+		if(rq_data_dir(req) == WRITE)
+			memcpy(sbd_data + (blk_rq_pos(req) << 9), req->buffer,
+				blk_rq_bytes(req));
 		else
-		{
-			memcpy(req->buffer, sbd_data_r, blk_rq_bytes(req));
-			sbd_data_rp += blk_rq_bytes(req);
-			blk_end_request_cur(req, 0);
-		}
+			memcpy(req->buffer, sbd_data + (blk_rq_pos(req) << 9),
+				blk_rq_bytes(req));
+
+		__blk_end_request_cur(req, 0);
 	}
 }
 
@@ -72,7 +66,7 @@ static int __init sbd_init(void)
 	}
 
 	sbd_rq = blk_init_queue(sbd_request_func, NULL);
-	if(dev->queue == NULL)
+	if(sbd_rq == NULL)
 	{
 		ret = -ENOMEM;
 		goto err_alloc_queue;
@@ -94,7 +88,7 @@ err_alloc_disk:
 	return ret;
 }
 
-static void __exit sdb_exit(void)
+static void __exit sbd_exit(void)
 {
 	printk(KERN_INFO "%s\n", __func__);
 
@@ -115,4 +109,4 @@ MODULE_AUTHOR("Zaicheng QI vmlinz@gmail.com");
 MODULE_DESCRIPTION("simple block device driver for test");
 
 module_init(sbd_init);
-moduel_exit(sbd_exit);
+module_exit(sbd_exit);
