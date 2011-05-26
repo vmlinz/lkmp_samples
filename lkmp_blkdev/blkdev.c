@@ -8,11 +8,14 @@
 
 #include <linux/fs.h>
 #include <linux/blkdev.h>
+#include <linux/elevator.h>
 
 #define SBD_BYTES (16 * 1024 * 1024)
 
 static struct gendisk *sbd = NULL;
 static struct request_queue * sbd_rq = NULL;
+/* static struct spinlock_t sbd_lock; */
+
 static int sbd_major = 0;
 unsigned char sbd_data[SBD_BYTES];
 
@@ -34,6 +37,17 @@ static void sbd_request_func(struct request_queue *q)
 			continue;
 		}
 
+		if (((blk_rq_pos(req) << 9) + blk_rq_bytes(req)) > SBD_BYTES) {
+			printk (KERN_INFO "out of disk boundary\n");
+
+			goto out;
+		}
+
+		printk (KERN_INFO "%s, rq_pos << 9 = %lu, rq_bytes = %lu\n",
+			(rq_data_dir(req) == WRITE) ? "WRITE" : "READ",
+			(unsigned long)(blk_rq_pos(req) << 9),
+			(unsigned long)blk_rq_bytes(req));
+
 		if(rq_data_dir(req) == WRITE)
 			memcpy(sbd_data + (blk_rq_pos(req) << 9), req->buffer,
 				blk_rq_bytes(req));
@@ -41,6 +55,7 @@ static void sbd_request_func(struct request_queue *q)
 			memcpy(req->buffer, sbd_data + (blk_rq_pos(req) << 9),
 				blk_rq_bytes(req));
 
+	out:
 		__blk_end_request_cur(req, 0);
 	}
 }
@@ -49,28 +64,33 @@ static void sbd_request_func(struct request_queue *q)
 static int __init sbd_init(void)
 {
 	int ret;
+	struct elevator_queue *oe;
 
 	printk(KERN_INFO "%s\n", __func__);
 
 	sbd_major = register_blkdev(sbd_major, "sbd");
-	if(sbd_major <= 0){
+	if (sbd_major <= 0) {
 		printk(KERN_WARNING "sdb: unable to get major number\n");
 		return -EBUSY;
 	}
 
 	sbd = alloc_disk(1);
-	if(!sbd)
-	{
+	if (!sbd) {
 		ret = -ENOMEM;
 		goto err_alloc_disk;
 	}
 
 	sbd_rq = blk_init_queue(sbd_request_func, NULL);
-	if(sbd_rq == NULL)
-	{
+	if (sbd_rq == NULL) {
 		ret = -ENOMEM;
 		goto err_alloc_queue;
 	}
+
+	oe = sbd_rq->elevator;
+	if (IS_ERR_VALUE(elevator_init(sbd_rq, "noop")))
+		printk (KERN_INFO "failed to switch elevator\n");
+	else
+		elevator_exit (oe);
 
 	sbd->major = sbd_major;
 	sbd->first_minor = 0;
@@ -92,8 +112,7 @@ static void __exit sbd_exit(void)
 {
 	printk(KERN_INFO "%s\n", __func__);
 
-	if(sbd)
-	{
+	if (sbd) {
 		del_gendisk(sbd);
 		put_disk(sbd);
 	}
